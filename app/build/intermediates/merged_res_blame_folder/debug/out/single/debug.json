@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "com.example.guitareartraining.app-merged_res-45:/xml_data_extraction_rules.xml.flat",
+        "source": "com.example.guitareartraining.app-main-47:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "com.example.guitareartraining.app-merged_res-45:/xml_backup_rules.xml.flat",
+        "source": "com.example.guitareartraining.app-main-47:/xml/backup_rules.xml"
+    }
+]
