@@ -438,23 +438,21 @@ fun TrainingContent(viewModel: TrainingViewModel) {
                         color = TextPrimary
                     )
 
-                    if (state.difficulty == Difficulty.NORMAL) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                        val positionText = if (prompt.position == 1) "1ra Posición (trastes 0‑11)" else "2da Posición (trastes 12‑21)"
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = Amber.copy(alpha = 0.15f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Amber.copy(alpha = 0.4f))
-                        ) {
-                            Text(
-                                text = positionText,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = AmberLight,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
-                        }
+                    val positionText = if (prompt.position == 1) "1ra Posición" else "2da Posición"
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Amber.copy(alpha = 0.15f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Amber.copy(alpha = 0.4f))
+                    ) {
+                        Text(
+                            text = positionText,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = AmberLight,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
                     }
                 }
             }
