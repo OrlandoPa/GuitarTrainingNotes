@@ -1,7 +1,13 @@
 package com.example.guitareartraining.ui
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,54 +17,56 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.Manifest
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import com.example.guitareartraining.presentation.FeedbackState
 import com.example.guitareartraining.presentation.TrainingViewModel
-import com.example.guitareartraining.ui.theme.ErrorRed
-import com.example.guitareartraining.ui.theme.PrimaryGreen
+import com.example.guitareartraining.ui.theme.*
+import kotlin.math.PI
+import kotlin.math.sin
 
+// ─────────────────────────────────────────────
+//  Main Screen
+// ─────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(viewModel: TrainingViewModel) {
     val state by viewModel.state.collectAsState()
 
     Scaffold(
+        containerColor = DarkBackground,
         topBar = {
-            TopAppBar(
-                title = { Text("Guitar Ear Training") },
-                navigationIcon = {
-                    if (state.isStarted) {
+            if (state.isStarted) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            "Guitar Ear Training",
+                            fontWeight = FontWeight.Bold,
+                            color = Amber
+                        )
+                    },
+                    navigationIcon = {
                         IconButton(onClick = { viewModel.stopTraining() }) {
-                            Icon(Icons.Default.Close, contentDescription = "Stop Training")
+                            Icon(Icons.Default.Close, contentDescription = "Stop Training", tint = TextSecondary)
                         }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = DarkSurface
+                    ),
+                    actions = {
+                        ScoreChips(hits = state.scoreHits, misses = state.scoreMisses)
                     }
-                },
-                actions = {
-                    if (state.isStarted) {
-                        Row(modifier = Modifier.padding(end = 16.dp)) {
-                            Text(
-                                "Aciertos: ${state.scoreHits}", 
-                                color = PrimaryGreen, 
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(end = 8.dp)
-                            )
-                            Text(
-                                "Fallos: ${state.scoreMisses}", 
-                                color = ErrorRed, 
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            )
+                )
+            }
         }
     ) { paddingValues ->
         val permissionLauncher = rememberLauncherForActivityResult(
@@ -74,135 +82,465 @@ fun MainScreen(viewModel: TrainingViewModel) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.background),
-            contentAlignment = Alignment.Center
         ) {
             if (!state.isStarted) {
-                // Start Screen
-                Button(
-                    onClick = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
-                    modifier = Modifier.size(200.dp, 80.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Comenzar", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                }
+                StartScreen(onStartClick = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) })
             } else {
-                // Active Training Screen
                 TrainingContent(viewModel = viewModel)
             }
+
+            // Pause Dialog
+            if (state.showPauseDialog) {
+                PauseDialog(
+                    notesPlayed = state.notesPlayedCount,
+                    onContinue = { viewModel.continueAfterPause() },
+                    onStop = { viewModel.stopAfterPause() }
+                )
+            }
         }
-        
-        // Pause Dialog
-        if (state.showPauseDialog) {
-            AlertDialog(
-                onDismissRequest = { },
-                title = { Text("¡Llevas ${state.notesPlayedCount} notas!") },
-                text = { Text("¿Deseas continuar o detener el entrenamiento por ahora?") },
-                confirmButton = {
-                    TextButton(onClick = { viewModel.continueAfterPause() }) {
-                        Text("Continuar")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { viewModel.stopAfterPause() }) {
-                        Text("Detener", color = ErrorRed)
-                    }
-                }
+    }
+}
+
+// ─────────────────────────────────────────────
+//  Score chips in the top bar
+// ─────────────────────────────────────────────
+@Composable
+private fun ScoreChips(hits: Int, misses: Int) {
+    Row(modifier = Modifier.padding(end = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = SuccessGreen.copy(alpha = 0.15f),
+            border = androidx.compose.foundation.BorderStroke(1.dp, SuccessGreen.copy(alpha = 0.4f))
+        ) {
+            Text(
+                text = "✓ $hits",
+                color = SuccessGreen,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+        }
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = ErrorRed.copy(alpha = 0.15f),
+            border = androidx.compose.foundation.BorderStroke(1.dp, ErrorRed.copy(alpha = 0.4f))
+        ) {
+            Text(
+                text = "✗ $misses",
+                color = ErrorRed,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
             )
         }
     }
 }
 
+// ─────────────────────────────────────────────
+//  Start Screen — the "hero" landing page
+// ─────────────────────────────────────────────
+@Composable
+private fun StartScreen(onStartClick: () -> Unit) {
+    // Subtle pulsing animation for the glow ring
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        DarkBackground,
+                        DarkSurface,
+                        DarkCard
+                    )
+                )
+            )
+    ) {
+        // Decorative guitar strings in the background
+        GuitarStringsBackground()
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // ── App Icon / Logo area ──
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                Amber.copy(alpha = pulseAlpha * 0.3f),
+                                Color.Transparent
+                            ),
+                            radius = 200f
+                        )
+                    )
+                    .border(
+                        width = 2.dp,
+                        brush = Brush.sweepGradient(
+                            colors = listOf(Amber, AmberDark, Amber)
+                        ),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "🎸",
+                    fontSize = 52.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // ── Title ──
+            Text(
+                text = "Guitar Ear Training",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Entrena tu oído musical.\nIdentifica notas en el diapasón.",
+                fontSize = 15.sp,
+                color = TextSecondary,
+                textAlign = TextAlign.Center,
+                lineHeight = 22.sp
+            )
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // ── Start button ──
+            Button(
+                onClick = onStartClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Amber,
+                    contentColor = DarkBackground
+                ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 8.dp,
+                    pressedElevation = 2.dp
+                )
+            ) {
+                Text(
+                    "Comenzar Entrenamiento",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ── Feature hints ──
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                FeatureHint(emoji = "🎯", text = "Notas aleatorias en las 6 cuerdas")
+                FeatureHint(emoji = "🎤", text = "Detección en tiempo real con micrófono")
+                FeatureHint(emoji = "📊", text = "Seguimiento de aciertos y fallos")
+            }
+        }
+    }
+}
+
+@Composable
+private fun FeatureHint(emoji: String, text: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(DarkCard.copy(alpha = 0.6f))
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Text(emoji, fontSize = 20.sp)
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = text,
+            color = TextSecondary,
+            fontSize = 14.sp
+        )
+    }
+}
+
+// Decorative diagonal lines that look like guitar strings
+@Composable
+private fun GuitarStringsBackground() {
+    Canvas(modifier = Modifier.fillMaxSize().alpha(0.08f)) {
+        val stringCount = 6
+        val spacing = size.width / (stringCount + 1)
+        for (i in 1..stringCount) {
+            val x = spacing * i
+            drawLine(
+                color = Color.White,
+                start = Offset(x - 40f, 0f),
+                end = Offset(x + 40f, size.height),
+                strokeWidth = if (i <= 3) 1.5f else (0.5f + i * 0.4f),
+                cap = StrokeCap.Round
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────
+//  Training Content — active session
+// ─────────────────────────────────────────────
 @Composable
 fun TrainingContent(viewModel: TrainingViewModel) {
     val state by viewModel.state.collectAsState()
     val prompt = state.currentPrompt
 
-    val backgroundColor by animateColorAsState(
+    val feedbackColor by animateColorAsState(
         targetValue = when (state.feedbackState) {
-            FeedbackState.SUCCESS -> PrimaryGreen.copy(alpha = 0.3f)
-            FeedbackState.FAILURE -> ErrorRed.copy(alpha = 0.3f)
-            FeedbackState.ATTEMPT_FAILED -> Color(0xFFFFA000).copy(alpha = 0.3f) // Orange/Yellow warning
+            FeedbackState.SUCCESS -> SuccessGreen
+            FeedbackState.FAILURE -> ErrorRed
+            FeedbackState.ATTEMPT_FAILED -> WarningOrange
             FeedbackState.NEUTRAL -> Color.Transparent
-        }
+        },
+        label = "feedbackColor"
     )
+
+    val bgGradient = when (state.feedbackState) {
+        FeedbackState.SUCCESS -> Brush.verticalGradient(
+            listOf(SuccessGreen.copy(alpha = 0.15f), DarkBackground)
+        )
+        FeedbackState.FAILURE -> Brush.verticalGradient(
+            listOf(ErrorRed.copy(alpha = 0.15f), DarkBackground)
+        )
+        FeedbackState.ATTEMPT_FAILED -> Brush.verticalGradient(
+            listOf(WarningOrange.copy(alpha = 0.12f), DarkBackground)
+        )
+        FeedbackState.NEUTRAL -> Brush.verticalGradient(
+            listOf(DarkBackground, DarkBackground)
+        )
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundColor)
+            .background(bgGradient)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         if (state.isResting) {
+            // ── Rest / feedback state ──
+            val icon = if (state.feedbackState == FeedbackState.SUCCESS) "✅" else "⏭️"
+            val msg = if (state.feedbackState == FeedbackState.SUCCESS) "¡Correcto!" else "Siguiente nota…"
+            val color = if (state.feedbackState == FeedbackState.SUCCESS) SuccessGreen else TextSecondary
+
+            Text(icon, fontSize = 48.sp)
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = if (state.feedbackState == FeedbackState.SUCCESS) "¡Correcto!" else "Siguiente nota en breve...",
-                fontSize = 28.sp,
+                text = msg,
+                fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (state.feedbackState == FeedbackState.SUCCESS) PrimaryGreen else MaterialTheme.colorScheme.onBackground
+                color = color
             )
         } else if (prompt != null) {
-            // Note Prompt
+            // ── Instruction label ──
             Text(
-                text = "Toca la nota:",
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            val positionText = if (prompt.position == 1) "1ra Posición (0-11)" else "2da Posición (12-21)"
-            
-            Text(
-                text = prompt.noteName,
-                fontSize = 64.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = "en la ${prompt.guitarString.stringName}",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Medium
-            )
-            
-            Text(
-                text = positionText,
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                text = "TOCA LA NOTA",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextMuted,
+                letterSpacing = 3.sp
             )
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // Timer Circle
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
+            // ── Big Note Name Card ──
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = DarkCard,
+                shadowElevation = 12.dp,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "${state.timerValue}s",
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(
+                    modifier = Modifier.padding(vertical = 32.dp, horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = prompt.noteName,
+                        fontSize = 72.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Amber
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "en la ${prompt.guitarString.stringName}",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    val positionText = if (prompt.position == 1) "1ra Posición (0‑11)" else "2da Posición (12‑21)"
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = DarkCardElevated
+                    ) {
+                        Text(
+                            text = positionText,
+                            fontSize = 13.sp,
+                            color = TextSecondary,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                        )
+                    }
+                }
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "Intentos restantes: ${state.attemptsLeft}",
-                fontSize = 16.sp,
-                color = if (state.attemptsLeft == 1) ErrorRed else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // ── Circular Timer ──
+            TimerRing(
+                timerValue = state.timerValue,
+                maxValue = 5,
+                feedbackColor = feedbackColor
             )
-            
-            Spacer(modifier = Modifier.height(48.dp))
-            
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // ── Attempts indicator ──
+            AttemptsIndicator(attemptsLeft = state.attemptsLeft)
         }
     }
+}
+
+// ─────────────────────────────────────────────
+//  Circular timer with animated arc
+// ─────────────────────────────────────────────
+@Composable
+private fun TimerRing(timerValue: Int, maxValue: Int, feedbackColor: Color) {
+    val progress = timerValue.toFloat() / maxValue.toFloat()
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 400, easing = EaseInOutCubic),
+        label = "timerProgress"
+    )
+
+    val ringColor = when {
+        timerValue <= 1 -> ErrorRed
+        timerValue <= 2 -> WarningOrange
+        else -> Amber
+    }
+
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(110.dp)) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            // Track
+            drawArc(
+                color = DarkCard,
+                startAngle = -90f,
+                sweepAngle = 360f,
+                useCenter = false,
+                style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
+            )
+            // Progress
+            drawArc(
+                color = ringColor,
+                startAngle = -90f,
+                sweepAngle = 360f * animatedProgress,
+                useCenter = false,
+                style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
+            )
+        }
+        Text(
+            text = "${timerValue}s",
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            color = ringColor
+        )
+    }
+}
+
+// ─────────────────────────────────────────────
+//  Attempts dot-indicator
+// ─────────────────────────────────────────────
+@Composable
+private fun AttemptsIndicator(attemptsLeft: Int) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "Intentos:",
+            fontSize = 14.sp,
+            color = TextSecondary
+        )
+        repeat(2) { index ->
+            val active = index < attemptsLeft
+            Box(
+                modifier = Modifier
+                    .size(14.dp)
+                    .clip(CircleShape)
+                    .background(if (active) Amber else DarkCard)
+                    .then(
+                        if (active) Modifier.border(1.dp, AmberDark, CircleShape) else Modifier
+                    )
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────
+//  Pause Dialog
+// ─────────────────────────────────────────────
+@Composable
+private fun PauseDialog(notesPlayed: Int, onContinue: () -> Unit, onStop: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = { },
+        containerColor = DarkCard,
+        shape = RoundedCornerShape(24.dp),
+        title = {
+            Text(
+                "¡Llevas $notesPlayed notas!",
+                fontWeight = FontWeight.Bold,
+                color = Amber
+            )
+        },
+        text = {
+            Text(
+                "¿Deseas continuar o detener el\nentrenamiento por ahora?",
+                color = TextSecondary,
+                lineHeight = 22.sp
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onContinue,
+                colors = ButtonDefaults.buttonColors(containerColor = Amber, contentColor = DarkBackground)
+            ) {
+                Text("Continuar", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onStop) {
+                Text("Detener", color = ErrorRed, fontWeight = FontWeight.Bold)
+            }
+        }
+    )
 }
