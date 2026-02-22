@@ -16,6 +16,8 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.log2
 
+enum class Difficulty { NORMAL, HARD }
+
 enum class FeedbackState {
     NEUTRAL, SUCCESS, FAILURE, ATTEMPT_FAILED
 }
@@ -30,7 +32,8 @@ data class TrainingState(
     val isStarted: Boolean = false,
     val notesPlayedCount: Int = 0,
     val showPauseDialog: Boolean = false,
-    val attemptsLeft: Int = 2
+    val attemptsLeft: Int = 2,
+    val difficulty: Difficulty = Difficulty.NORMAL
 )
 
 class TrainingViewModel : ViewModel() {
@@ -51,10 +54,10 @@ class TrainingViewModel : ViewModel() {
         }
     }
 
-    fun startTraining() {
+    fun startTraining(difficulty: Difficulty = Difficulty.NORMAL) {
         if (_state.value.isStarted) return
         
-        _state.update { it.copy(isStarted = true) }
+        _state.update { it.copy(isStarted = true, difficulty = difficulty) }
         pitchDetector.startListening()
         nextNote()
     }
@@ -82,13 +85,17 @@ class TrainingViewModel : ViewModel() {
         consecutiveWrongPitches = 0
         consecutiveRightPitches = 0
         val prompt = generateRandomNoteUseCase()
+        val isHard = _state.value.difficulty == Difficulty.HARD
+        val initialTimer = if (isHard) 3 else 5
+        val initialAttempts = if (isHard) 1 else 2
+
         _state.update {
             it.copy(
                 currentPrompt = prompt,
-                timerValue = 5,
+                timerValue = initialTimer,
                 feedbackState = FeedbackState.NEUTRAL,
                 isResting = false,
-                attemptsLeft = 2
+                attemptsLeft = initialAttempts
             )
         }
         startTimer()
@@ -119,11 +126,12 @@ class TrainingViewModel : ViewModel() {
                     )
                 }
                 delay(1500L)
+                val isHard = _state.value.difficulty == Difficulty.HARD
                 _state.update { current ->
                     current.copy(
                         feedbackState = FeedbackState.NEUTRAL,
                         isResting = false,
-                        timerValue = 5
+                        timerValue = if (isHard) 3 else 5
                     )
                 }
                 consecutiveWrongPitches = 0

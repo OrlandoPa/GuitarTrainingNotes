@@ -89,7 +89,7 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\lalop\.gradle\cach
 	android:supportsRtl
 		ADDED from C:\Users\lalop\Desktop\ProyectoAppAndroid\app\src\main\AndroidManifest.xml:12:9-35
 	android:label
-		ADDED from C:\Users\lalop\Desktop\ProyectoAppAndroid\app\src\main\AndroidManifest.xml:11:9-42
+		ADDED from C:\Users\lalop\Desktop\ProyectoAppAndroid\app\src\main\AndroidManifest.xml:11:9-46
 	android:fullBackupContent
 		ADDED from C:\Users\lalop\Desktop\ProyectoAppAndroid\app\src\main\AndroidManifest.xml:10:9-54
 	tools:targetApi

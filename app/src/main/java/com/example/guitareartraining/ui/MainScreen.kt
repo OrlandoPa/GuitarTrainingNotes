@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.guitareartraining.presentation.Difficulty
 import com.example.guitareartraining.presentation.FeedbackState
 import com.example.guitareartraining.presentation.TrainingViewModel
 import com.example.guitareartraining.ui.theme.*
@@ -69,11 +70,13 @@ fun MainScreen(viewModel: TrainingViewModel) {
             }
         }
     ) { paddingValues ->
+        var selectedDifficulty by remember { mutableStateOf(Difficulty.NORMAL) }
+
         val permissionLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestPermission(),
             onResult = { isGranted ->
                 if (isGranted) {
-                    viewModel.startTraining()
+                    viewModel.startTraining(selectedDifficulty)
                 }
             }
         )
@@ -84,7 +87,10 @@ fun MainScreen(viewModel: TrainingViewModel) {
                 .padding(paddingValues)
         ) {
             if (!state.isStarted) {
-                StartScreen(onStartClick = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) })
+                StartScreen(onStartClick = { difficulty -> 
+                    selectedDifficulty = difficulty
+                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                })
             } else {
                 TrainingContent(viewModel = viewModel)
             }
@@ -140,7 +146,7 @@ private fun ScoreChips(hits: Int, misses: Int) {
 //  Start Screen — the "hero" landing page
 // ─────────────────────────────────────────────
 @Composable
-private fun StartScreen(onStartClick: () -> Unit) {
+private fun StartScreen(onStartClick: (Difficulty) -> Unit) {
     // Subtle pulsing animation for the glow ring
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -228,27 +234,45 @@ private fun StartScreen(onStartClick: () -> Unit) {
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // ── Start button ──
-            Button(
-                onClick = onStartClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Amber,
-                    contentColor = DarkBackground
-                ),
-                elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 8.dp,
-                    pressedElevation = 2.dp
-                )
-            ) {
-                Text(
-                    "Comenzar Entrenamiento",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
+            // ── Buttons ──
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Button(
+                    onClick = { onStartClick(Difficulty.NORMAL) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Amber,
+                        contentColor = DarkBackground
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp, pressedElevation = 2.dp)
+                ) {
+                    Text(
+                        "Modo Normal",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                
+                Button(
+                    onClick = { onStartClick(Difficulty.HARD) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DarkSurface,
+                        contentColor = ErrorRed
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, ErrorRed.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        "Modo Difícil",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -414,21 +438,23 @@ fun TrainingContent(viewModel: TrainingViewModel) {
                         color = TextPrimary
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    if (state.difficulty == Difficulty.NORMAL) {
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    val positionText = if (prompt.position == 1) "1ra Posición (trastes 0‑11)" else "2da Posición (trastes 12‑21)"
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Amber.copy(alpha = 0.15f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Amber.copy(alpha = 0.4f))
-                    ) {
-                        Text(
-                            text = positionText,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = AmberLight,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
+                        val positionText = if (prompt.position == 1) "1ra Posición (trastes 0‑11)" else "2da Posición (trastes 12‑21)"
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Amber.copy(alpha = 0.15f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Amber.copy(alpha = 0.4f))
+                        ) {
+                            Text(
+                                text = positionText,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AmberLight,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -438,14 +464,17 @@ fun TrainingContent(viewModel: TrainingViewModel) {
             // ── Circular Timer ──
             TimerRing(
                 timerValue = state.timerValue,
-                maxValue = 5,
+                maxValue = if (state.difficulty == Difficulty.HARD) 3 else 5,
                 feedbackColor = feedbackColor
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
             // ── Attempts indicator ──
-            AttemptsIndicator(attemptsLeft = state.attemptsLeft)
+            AttemptsIndicator(
+                attemptsLeft = state.attemptsLeft, 
+                maxAttempts = if (state.difficulty == Difficulty.HARD) 1 else 2
+            )
         }
     }
 }
@@ -501,7 +530,7 @@ private fun TimerRing(timerValue: Int, maxValue: Int, feedbackColor: Color) {
 //  Attempts dot-indicator
 // ─────────────────────────────────────────────
 @Composable
-private fun AttemptsIndicator(attemptsLeft: Int) {
+private fun AttemptsIndicator(attemptsLeft: Int, maxAttempts: Int) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -511,7 +540,7 @@ private fun AttemptsIndicator(attemptsLeft: Int) {
             fontSize = 14.sp,
             color = TextSecondary
         )
-        repeat(2) { index ->
+        repeat(maxAttempts) { index ->
             val active = index < attemptsLeft
             Box(
                 modifier = Modifier

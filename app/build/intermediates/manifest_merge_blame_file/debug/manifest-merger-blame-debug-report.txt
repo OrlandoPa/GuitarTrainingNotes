@@ -35,8 +35,8 @@
 24        android:extractNativeLibs="false"
 25        android:fullBackupContent="@xml/backup_rules"
 25-->C:\Users\lalop\Desktop\ProyectoAppAndroid\app\src\main\AndroidManifest.xml:10:9-54
-26        android:label="GuitarEarTraining"
-26-->C:\Users\lalop\Desktop\ProyectoAppAndroid\app\src\main\AndroidManifest.xml:11:9-42
+26        android:label="Guitar Notes Training"
+26-->C:\Users\lalop\Desktop\ProyectoAppAndroid\app\src\main\AndroidManifest.xml:11:9-46
 27        android:supportsRtl="true"
 27-->C:\Users\lalop\Desktop\ProyectoAppAndroid\app\src\main\AndroidManifest.xml:12:9-35
 28        android:testOnly="true"
