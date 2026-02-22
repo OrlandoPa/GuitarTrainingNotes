@@ -8,7 +8,7 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:label="GuitarEarTraining"
+        android:label="Guitar Notes Training"
         android:supportsRtl="true"
         android:theme="@style/Theme.GuitarEarTraining"
         tools:targetApi="31">

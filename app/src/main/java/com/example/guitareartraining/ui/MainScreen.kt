@@ -49,7 +49,7 @@ fun MainScreen(viewModel: TrainingViewModel) {
                 TopAppBar(
                     title = {
                         Text(
-                            "Guitar Ear Training",
+                            "Guitar Notes Training",
                             fontWeight = FontWeight.Bold,
                             color = Amber
                         )
@@ -209,7 +209,7 @@ private fun StartScreen(onStartClick: () -> Unit) {
 
             // ── Title ──
             Text(
-                text = "Guitar Ear Training",
+                text = "Guitar Notes Training",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary,
@@ -219,7 +219,7 @@ private fun StartScreen(onStartClick: () -> Unit) {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Entrena tu oído musical.\nIdentifica notas en el diapasón.",
+                text = "Entrenamiento de notas en la guitarra.\nIdentifica notas en el diapasón.",
                 fontSize = 15.sp,
                 color = TextSecondary,
                 textAlign = TextAlign.Center,
@@ -345,9 +345,27 @@ fun TrainingContent(viewModel: TrainingViewModel) {
     ) {
         if (state.isResting) {
             // ── Rest / feedback state ──
-            val icon = if (state.feedbackState == FeedbackState.SUCCESS) "✅" else "⏭️"
-            val msg = if (state.feedbackState == FeedbackState.SUCCESS) "¡Correcto!" else "Siguiente nota…"
-            val color = if (state.feedbackState == FeedbackState.SUCCESS) SuccessGreen else TextSecondary
+            val icon: String
+            val msg: String
+            val color: Color
+
+            when (state.feedbackState) {
+                FeedbackState.SUCCESS -> {
+                    icon = "✅"
+                    msg = "¡Correcto!"
+                    color = SuccessGreen
+                }
+                FeedbackState.ATTEMPT_FAILED -> {
+                    icon = "⚠️"
+                    msg = "¡Segundo intento!"
+                    color = WarningOrange
+                }
+                else -> {
+                    icon = "❌"
+                    msg = "Siguiente nota…"
+                    color = ErrorRed
+                }
+            }
 
             Text(icon, fontSize = 48.sp)
             Spacer(modifier = Modifier.height(12.dp))
@@ -390,24 +408,26 @@ fun TrainingContent(viewModel: TrainingViewModel) {
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "en la ${prompt.guitarString.stringName}",
+                        text = prompt.guitarString.stringName,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Medium,
                         color = TextPrimary
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    val positionText = if (prompt.position == 1) "1ra Posición (0‑11)" else "2da Posición (12‑21)"
+                    val positionText = if (prompt.position == 1) "1ra Posición (trastes 0‑11)" else "2da Posición (trastes 12‑21)"
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = DarkCardElevated
+                        shape = RoundedCornerShape(12.dp),
+                        color = Amber.copy(alpha = 0.15f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Amber.copy(alpha = 0.4f))
                     ) {
                         Text(
                             text = positionText,
-                            fontSize = 13.sp,
-                            color = TextSecondary,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = AmberLight,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
                 }
